@@ -14,7 +14,7 @@ XADE will be the exchange provider for DeriveX. We aim at creating the world's b
 
 - Arav Budhiraja (@arav06)
 - Nayan Kubade (@Mitochondria99)
-- Bhavishya Garg
+- Bhavishya Garg (@bhavishyag2)
 
 #### Note: We will record our progress via commits so make sure that important commits have a meaningful title and maybe a short and crisp description.
 
