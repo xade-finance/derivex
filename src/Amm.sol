@@ -9,10 +9,10 @@ import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token
 import { Decimal } from "./utils/Decimal.sol";
 import { SignedDecimal } from "./utils/SignedDecimal.sol";
 import { MixedDecimal } from "./utils/MixedDecimal.sol";
-import { PerpFiOwnableUpgrade } from "./utils/PerpFiOwnableUpgrade.sol";
+import { XadeOwnableUpgrade } from "./utils/XadeOwnableUpgrade.sol";
 import { IAmm } from "./interface/IAmm.sol";
 
-contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
+contract Amm is IAmm, XadeOwnableUpgrade, BlockContext {
     using SafeMath for uint256;
     using Decimal for Decimal.decimal;
     using SignedDecimal for SignedDecimal.signedDecimal;
@@ -264,7 +264,7 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         require(_blockTimestamp() >= nextFundingTime, "settle funding too early");
 
         // premium = twapMarketPrice - twapIndexPrice
-        // timeFraction = fundingPeriod(1 hour) / 1 day
+        // timeFraction = fundingPeriod(10 Minutes) / 1 day
         // premiumFraction = premium * timeFraction
         Decimal.decimal memory underlyingPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
         SignedDecimal.signedDecimal memory premium =
