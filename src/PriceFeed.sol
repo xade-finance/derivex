@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -29,10 +29,8 @@ contract PriceFeed is IPriceFeed, Ownable, BlockContext {
     //
     // FUNCTIONS
     //
-    function initialize(address _ambBridge, address _rootBridge) public initializer {
+    function initialize() public initializer {
         __Ownable_init();
-        ambBridge = _ambBridge;
-        rootBridge = _rootBridge;
     }
 
     function addAggregator(bytes32 _priceFeedKey) external onlyOwner {
@@ -55,11 +53,6 @@ contract PriceFeed is IPriceFeed, Ownable, BlockContext {
         }
     }
 
-    
-    function setRootBridge(address _rootBridge) external onlyOwner {
-        require(_rootBridge != address(0), "addr is empty");
-        rootBridge = _rootBridge;
-    }
 
     //
     // INTERFACE IMPLEMENTATION
@@ -69,7 +62,7 @@ contract PriceFeed is IPriceFeed, Ownable, BlockContext {
         bytes32 _priceFeedKey,
         uint256 _price,
         uint256 _timestamp
-    ) internal override onlyBridge {
+    ) internal override {
 
         PriceData memory data = PriceData({ price: _price, timestamp: _timestamp});
         priceFeedMap[_priceFeedKey].priceData.push(data);
