@@ -2,7 +2,7 @@
 pragma solidity 0.6.9;
 pragma experimental ABIEncoderV2;
 
-import { PerpFiOwnableUpgrade } from "../utils/PerpFiOwnableUpgrade.sol";
+import { XadeOwnableUpgrade } from "./utils/XadeOwnableUpgrade.sol";
 import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import { CErc20 } from "./Compound/CTokenInterface.sol";
 import { BPool } from "./Balancer/BPool.sol";
@@ -12,7 +12,7 @@ import { Decimal, SafeMath } from "../utils/Decimal.sol";
 
 // USDC/USDT decimal 6
 // cUSDC/cUSDT decimal 8
-contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
+contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
     using Decimal for Decimal.decimal;
     using SafeMath for *;
 
@@ -22,7 +22,7 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
     //
     // EVENTS
     //
-    event ExchangeSwap(uint256 perpTokenAmount, uint256 usdtAmount);
+    event ExchangeSwap(uint256 inputTokenAmount, uint256 outputTokenAmount);
     // for debug purpose in the future
     event BalancerSwap(uint256 inAmount, uint256 out);
     event CompoundRedeem(uint256 underlyingAmount, uint256 cTokenAmount);
@@ -33,8 +33,7 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
     //**********************************************************//
     BPool public balancerPool;
     CErc20 public compoundCUsdt;
-    IERC20 private perpToken;
-    IERC20 private usdtToken;
+    IERC20 private cUSD;
     //**********************************************************//
     //    The above state variables can not change the order    //
     //**********************************************************//
@@ -50,11 +49,11 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
     function initialize(
         address _balancerPool,
         address _compoundCUsdt,
-        address _perpToken
+        address _cUSD;
     ) external initializer {
         __Ownable_init();
 
-        perpToken = IERC20(_perpToken);
+        cUSD = setCusd(_cUSD);
         setBalancerPool(_balancerPool);
         setCompoundCUsdt(_compoundCUsdt);
     }
@@ -120,12 +119,15 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
 
     function setCompoundCUsdt(address _compoundCUsdt) public onlyOwner {
         compoundCUsdt = CErc20(_compoundCUsdt);
-        usdtToken = IERC20(compoundCUsdt.underlying());
 
         // approve cUSDT for redeem/redeemUnderlying
         approve(IERC20(address(compoundCUsdt)), address(compoundCUsdt), Decimal.decimal(uint256(-1)));
+    }
+
+    function setCusd(address _cUSD) public onlyOwner {
+        cUSD = IERC20(_cUSD);
         // approve usdt for cUSDT to mint
-        approve(usdtToken, address(compoundCUsdt), Decimal.decimal(uint256(-1)));
+        approve(cUSD, address(compoundCUsdt), Decimal.decimal(uint256(-1)));
     }
 
     //
@@ -145,8 +147,8 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
         //___0. transfer input token to exchangeWrapper
         _transferFrom(_inputToken, sender, address(this), inTokenAmount);
 
-        // mint cUSDT for Balancer if _inputToken is USDT
-        if (isUSDT(_inputToken)) {
+        // mint cUSDT for Balancer if _inputToken is cUSD
+        if (isCUSD(_inputToken)) {
             inTokenAmount = compoundMint(inTokenAmount);
         }
 
@@ -155,8 +157,8 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
         IERC20 outToken = balancerAcceptableToken(_outputToken);
         outTokenAmount = balancerSwapIn(inToken, outToken, inTokenAmount, _minOutputTokenBought, _maxPrice);
 
-        // if _outputToken is USDT redeem cUSDT to USDT
-        if (isUSDT(_outputToken)) {
+        // if _outputToken is cUSD redeem cUSDT to cUSD
+        if (isCUSD(_outputToken)) {
             outTokenAmount = compoundRedeem(outTokenAmount);
         }
         emit ExchangeSwap(_inputTokenSold.toUint(), outTokenAmount.toUint());
@@ -175,8 +177,8 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
         address sender = _msgSender();
         Decimal.decimal memory outTokenBought = _outputTokenBought;
 
-        //___0. if _outputToken is USDT, get cUSDT amount for Balancer
-        if (isUSDT(_outputToken)) {
+        //___0. if _outputToken is cUSD, get cUSDT amount for Balancer
+        if (isCUSD(_outputToken)) {
             outTokenBought = compoundCTokenAmount(outTokenBought);
         }
 
@@ -188,8 +190,8 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
         require(_maxInputTokenSold.cmp(expectedTokenInAmount) >= 0, "max input amount less than expected");
 
         //___2 transfer input tokens to exchangeWrapper
-        // if _inputToken is USDT, mint cUSDT for Balancer
-        if (isUSDT(_inputToken)) {
+        // if _inputToken is cUSD, mint cUSDT for Balancer
+        if (isCUSD(_inputToken)) {
             Decimal.decimal memory underlyingAmount = compoundUnderlyingAmount(expectedTokenInAmount);
             _transferFrom(_inputToken, sender, address(this), underlyingAmount);
             compoundMint(underlyingAmount);
@@ -201,8 +203,8 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
         Decimal.decimal memory requiredInAmount =
             balancerSwapOut(inToken, outToken, outTokenBought, _maxInputTokenSold, _maxPrice);
 
-        // if _outputToken is USDT, redeem cUSDT to USDT
-        if (isUSDT(_outputToken)) {
+        // if _outputToken is cUSD, redeem cUSDT to cUSD
+        if (isCUSD(_outputToken)) {
             compoundRedeemUnderlying(_outputTokenBought);
         }
         emit ExchangeSwap(requiredInAmount.toUint(), _outputTokenBought.toUint());
@@ -296,7 +298,7 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
         require(compoundCUsdt.redeem(cTokenAmountIn8Decimals) == 0, "Compound redeem error");
 
         outUnderlyingAmount = compoundUnderlyingAmount(_cTokenAmount);
-        uint256 underlyingAmountInSelfDecimals = _toUint(usdtToken, outUnderlyingAmount);
+        uint256 underlyingAmountInSelfDecimals = _toUint(cUSD, outUnderlyingAmount);
         emit CompoundRedeem(underlyingAmountInSelfDecimals, cTokenAmountIn8Decimals);
     }
 
@@ -348,7 +350,7 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
     }
 
     function balancerAcceptableToken(IERC20 _token) internal view returns (IERC20) {
-        if (isUSDT(_token)) {
+        if (isCUSD(_token)) {
             return IERC20(address(compoundCUsdt));
         }
         return _token;
@@ -384,8 +386,8 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
         uint256 spotPrice = balancerPool.getSpotPrice(address(inToken), address(outToken));
 
         // the amount returned from getSpotPrice includes decimals difference between tokens.
-        // for example, input/output token pair, USDC(8 decimals)/PERP(18 decimals) and 2 USDC buy 1 PERP,
-        // it returns 0.5e-10*e18, in the other direction(PERP/USDC), it returns 2e10*e18
+        // for example, input/output token pair, USDC(8 decimals)/BAT(18 decimals) and 2 USDC buy 1 BAT,
+        // it returns 0.5e-10*e18, in the other direction(BAT/USDC), it returns 2e10*e18
         Decimal.decimal memory price = Decimal.decimal(spotPrice);
         uint256 decimalsOfInput = _getTokenDecimals(address(inToken));
         uint256 decimalsOfOutput = _getTokenDecimals(address(outToken));
@@ -396,18 +398,18 @@ contract ExchangeWrapper is PerpFiOwnableUpgrade, IExchangeWrapper, DecimalERC20
         }
 
         // compoundUnderlyingAmount gets n underlying tokens by given m cTokens
-        // if input token is USDT, spot price is 0.5(cUSDT/PERP). The price of USDT/PERP would be 0.5 x n
-        // if output token is USDT, spot price is 2(PERP/cUSDT) then price is 2/n
-        if (isUSDT(_inputToken)) {
+        // if input token is cUSD, spot price is 0.5(cUSDT/BAT). The price of USDT/BAT would be 0.5 x n
+        // if output token is USDT, spot price is 2(BAT/cUSDT) then price is 2/n
+        if (isCUSD(_inputToken)) {
             return price.mulD(compoundUnderlyingAmount(Decimal.one()));
-        } else if (isUSDT(_outputToken)) {
+        } else if (isCUSD(_outputToken)) {
             return price.divD(compoundUnderlyingAmount(Decimal.one()));
         }
         return price;
     }
 
-    function isUSDT(IERC20 _token) internal view returns (bool) {
-        if (usdtToken == _token) {
+    function isCUSD(IERC20 _token) internal view returns (bool) {
+        if (cUSD == _token) {
             return true;
         }
         return false;
