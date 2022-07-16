@@ -3,11 +3,11 @@ pragma solidity 0.6.9;
 pragma experimental ABIEncoderV2;
 
 import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import { PerpFiOwnableUpgrade } from "../utils/PerpFiOwnableUpgrade.sol";
+import { XadeOwnableUpgrade } from "./utils/XadeOwnableUpgrade.sol";
 import { Decimal } from "../utils/Decimal.sol";
 import { DecimalERC20 } from "../utils/DecimalERC20.sol";
 
-abstract contract KeeperRewardBase is PerpFiOwnableUpgrade, DecimalERC20 {
+abstract contract KeeperRewardBase is XadeOwnableUpgrade, DecimalERC20 {
     event KeeperCalled(address keeper, bytes4 func, uint256 reward);
 
     struct TaskInfo {

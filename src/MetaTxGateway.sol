@@ -2,12 +2,12 @@
 pragma solidity 0.6.9;
 
 import { SafeMath } from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import { PerpFiOwnableUpgrade } from "./utils/PerpFiOwnableUpgrade.sol";
+import { XadeOwnableUpgrade } from "./utils/XadeOwnableUpgrade.sol";
 import { LowLevelErrorMessage } from "./utils/LowLevelErrorMessage.sol";
 
 // this is functionally identical to https://github.com/bcnmy/metatx-standard/blob/master/src/contracts/EIP712MetaTransaction.sol
 // except it implements openzeppelin Initializable
-contract MetaTxGateway is PerpFiOwnableUpgrade, LowLevelErrorMessage {
+contract MetaTxGateway is XadeOwnableUpgrade, LowLevelErrorMessage {
     using SafeMath for uint256;
 
     //
