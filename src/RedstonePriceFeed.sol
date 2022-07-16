@@ -1,25 +1,23 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 pragma solidity ^0.8.0;
 
-import "redstone-finance/redstone-evm-connector/blob/master/contracts/message-based/PriceAware.sol";
+import "redstone-evm-connector/lib/contracts/message-based/PriceAware.sol";
+import { BlockContext } from "./utils/BlockContext.sol";
 import "./PriceFeed.sol";
 
-contract RedstonePriceFeed is PriceFeed, PriceAware {
+contract RedstonePriceFeed is PriceFeed, PriceAware, BlockContext {
     
-    address public authorizedSigner;
-
     function isSignerAuthorized(address _signer) public virtual view override returns(bool) {
-        return _signer == authorizedSigner;
+        return _signer == 0xf786a909D559F5Dee2dc6706d8e5A81728a39aE9;
+        //redstone-rapid demo provider
     }
 
-    function updatePrice(bytes32 _priceFeedKey) external onlyBridge {
-        require(IAMB(ambBridge).messageSender() == rootBridge, "sender not RootBridge");
+    function updatePrice(bytes32 _priceFeedKey) external {
         requireKeyExisted(_priceFeedKey, true);
         require(_timestamp > getLatestTimestamp(_priceFeedKey), "incorrect timestamp");
-        require(isSignerAuthorized(msg.sender), "unauthorized signer");
         
-        uint256 price = getPriceFromMsg(_priceFeedKey);
-        setLatestData(_priceFeedKey, price, block.timestamp);
+        uint256 price = getPriceFromMsg(bytes32(_priceFeedKey));
+        setLatestData(_priceFeedKey, price, _blockTimestamp());
     }
 }
