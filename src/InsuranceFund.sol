@@ -2,7 +2,7 @@
 pragma solidity 0.6.9;
 pragma experimental ABIEncoderV2;
 
-import { PerpFiOwnableUpgrade } from "./utils/PerpFiOwnableUpgrade.sol";
+import { XadeOwnableUpgrade } from "./utils/XadeOwnableUpgrade.sol";
 import {
     ReentrancyGuardUpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
@@ -16,7 +16,7 @@ import { IMinter } from "./interface/IMinter.sol";
 import { IAmm } from "./interface/IAmm.sol";
 import { IInflationMonitor } from "./interface/IInflationMonitor.sol";
 
-contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe, DecimalERC20 {
+contract InsuranceFund is IInsuranceFund, XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe, DecimalERC20 {
     using Decimal for Decimal.decimal;
 
     //
@@ -40,11 +40,10 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
     IERC20[] public quoteTokens;
 
     // contract dependencies
-    IExchangeWrapper public exchange;
-    IERC20 public perpToken;
-    IMinter public minter;
+    address private feePool;
     IInflationMonitor public inflationMonitor;
     address private beneficiary;
+    IERC20 public cUSD;
 
     //**********************************************************//
     //    The above state variables can not change the order    //
@@ -106,7 +105,7 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
      * @dev only owner can call. Emit `ShutdownAllAmms` event
      */
     function shutdownAllAmm() external onlyOwner {
-        if (!inflationMonitor.isOverMintThreshold()) {
+        if (!inflationMonitor.isOverThreshold()) {
             return;
         }
         for (uint256 i; i < amms.length; i++) {
@@ -130,12 +129,12 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
             }
         }
 
-        // exchange and transfer to the quoteToken with the most value. if no more quoteToken, buy protocol tokens
+        // exchange and transfer to the quoteToken with the most value. if no more quoteToken, transfer to cUSD
         // TODO use curve or balancer fund token for pooling the fees will be less painful
         if (balanceOf(_token).toUint() > 0) {
             address outputToken = getTokenWithMaxValue();
             if (outputToken == address(0)) {
-                outputToken = address(perpToken);
+                outputToken = address(cUSD);
             }
             swapInput(_token, IERC20(outputToken), balanceOf(_token), Decimal.zero());
         }
@@ -175,9 +174,8 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
         beneficiary = _beneficiary;
     }
 
-    function setMinter(IMinter _minter) public onlyOwner {
-        minter = _minter;
-        perpToken = minter.getPerpToken();
+    function setCUSD(IERC20 _cUSD) public onlyOwner {
+        cUSD = _cUSD;
     }
 
     function setInflationMonitor(IInflationMonitor _inflationMonitor) external onlyOwner {
@@ -263,12 +261,9 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
             _requiredQuoteAmount = _requiredQuoteAmount.subD(swappedQuoteToken);
         }
 
-        // if all the quote tokens can't afford the debt, ask staking token to mint
+        // if all the quote tokens can't afford the debt, withdraw from feePool
         if (_requiredQuoteAmount.toUint() > 0) {
-            Decimal.decimal memory requiredPerpAmount =
-                exchange.getOutputPrice(perpToken, _quoteToken, _requiredQuoteAmount);
-            minter.mintForLoss(requiredPerpAmount);
-            swapInput(perpToken, _quoteToken, requiredPerpAmount, Decimal.zero());
+            feePool.withdrawToInsuranceFund(_quoteToken, _requiredQuoteAmount);
         }
     }
 
@@ -292,13 +287,13 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
         // insertion sort
         for (uint256 i = 0; i < getQuoteTokenLength(); i++) {
             IERC20 currentToken = quoteTokens[i];
-            Decimal.decimal memory currentPerpValue =
-                exchange.getInputPrice(currentToken, perpToken, balanceOf(currentToken));
+            Decimal.decimal memory currentCUSDValue =
+                exchange.getInputPrice(currentToken, cUSD, balanceOf(currentToken));
 
             for (uint256 j = i; j > 0; j--) {
-                Decimal.decimal memory subsetPerpValue =
-                    exchange.getInputPrice(tokens[j - 1], perpToken, balanceOf(tokens[j - 1]));
-                if (currentPerpValue.toUint() > subsetPerpValue.toUint()) {
+                Decimal.decimal memory subsetCUSDValue =
+                    exchange.getInputPrice(tokens[j - 1], cUSD, balanceOf(tokens[j - 1]));
+                if (currentCUSDValue.toUint() > subsetCUSDValue.toUint()) {
                     tokens[j] = tokens[j - 1];
                     tokens[j - 1] = currentToken;
                 }
