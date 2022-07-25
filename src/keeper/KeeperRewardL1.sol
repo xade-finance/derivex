@@ -4,21 +4,21 @@ pragma experimental ABIEncoderV2;
 
 import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import { KeeperRewardBase } from "./KeeperRewardBase.sol";
-import { ChainlinkL1 } from "../ChainlinkL1.sol";
+import { RedstonePriceFeed } from "../RedstonePriceFeed.sol";
 
 contract KeeperRewardL1 is KeeperRewardBase {
-    function initialize(IERC20 _perpToken) external initializer {
-        __BaseKeeperReward_init(_perpToken);
+    function initialize(IERC20 _cUSD) external initializer {
+        __BaseKeeperReward_init(_cUSD);
     }
 
     /**
      * @notice call this function to update price feed and get token reward
      */
     function updatePriceFeed(bytes32 _priceFeedKey) external {
-        bytes4 selector = ChainlinkL1.updateLatestRoundData.selector;
+        bytes4 selector = RedstonePriceFeed.updatePrice.selector;
         TaskInfo memory task = getTaskInfo(selector);
 
-        ChainlinkL1(task.contractAddr).updateLatestRoundData(_priceFeedKey);
+        RedstonePriceFeed(task.contractAddr).updatePrice(_priceFeedKey);
         postTaskAction(selector);
     }
 }
