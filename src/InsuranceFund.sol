@@ -12,7 +12,6 @@ import { IExchangeWrapper } from "./interface/IExchangeWrapper.sol";
 import { IInsuranceFund } from "./interface/IInsuranceFund.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import { DecimalERC20 } from "./utils/DecimalERC20.sol";
-import { IMinter } from "./interface/IMinter.sol";
 import { IAmm } from "./interface/IAmm.sol";
 import { IInflationMonitor } from "./interface/IInflationMonitor.sol";
 

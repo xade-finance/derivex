@@ -24,6 +24,9 @@ contract FeePool is XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe
     event FeeTokenRemoved(address tokenAddress);
     event FeePoolOperatorSet(address feePoolOperator);
 
+    //**********************************************************//
+    //    The below state variables can not change the order    //
+    //**********************************************************//
     mapping(address => bool) private feeTokenMap;
     IERC20[] public feeTokens;
 
@@ -32,6 +35,13 @@ contract FeePool is XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe
     IInflationMonitor public inflationMonitor;
     address public feePoolOperator;
 
+    //**********************************************************//
+    //    The above state variables can not change the order    //
+    //**********************************************************//
+
+    //◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤ add state variables below ◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤//
+
+    //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
     uint256[50] private __gap;
 
     //

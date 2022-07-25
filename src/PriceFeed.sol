@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import { IAMB } from "./bridge/external/IAMB.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
 
@@ -20,10 +19,21 @@ contract PriceFeed is IPriceFeed, Ownable, BlockContext {
         PriceData[] priceData;
     }
 
+    //**********************************************************//
+    //    The below state variables can not change the order    //
+    //**********************************************************//
+
     // key by currency symbol, eg ETH
     mapping(bytes32 => PriceFeed) public priceFeedMap;
     bytes32[] public priceFeedKeys;
 
+    //**********************************************************//
+    //    The above state variables can not change the order    //
+    //**********************************************************//
+
+    //◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤ add state variables below ◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤//
+
+    //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
     uint256[50] private __gap;
 
     //
