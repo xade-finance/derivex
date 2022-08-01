@@ -2,7 +2,7 @@
 pragma solidity 0.6.9;
 pragma experimental ABIEncoderV2;
 
-import { XadeOwnableUpgrade } from "./utils/XadeOwnableUpgrade.sol";
+import { XadeOwnableUpgrade } from "../utils/XadeOwnableUpgrade.sol";
 import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import { CErc20 } from "./Compound/CTokenInterface.sol";
 import { BPool } from "./Balancer/BPool.sol";
@@ -34,6 +34,7 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
     BPool public balancerPool;
     CErc20 public compoundCUsdt;
     IERC20 private cUSD;
+    IERC20 private perpToken;
     //**********************************************************//
     //    The above state variables can not change the order    //
     //**********************************************************//
@@ -49,11 +50,11 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
     function initialize(
         address _balancerPool,
         address _compoundCUsdt,
-        address _cUSD;
+        address _perpToken
     ) external initializer {
         __Ownable_init();
 
-        cUSD = setCusd(_cUSD);
+        perpToken = IERC20(_perpToken);
         setBalancerPool(_balancerPool);
         setCompoundCUsdt(_compoundCUsdt);
     }
@@ -119,9 +120,11 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
 
     function setCompoundCUsdt(address _compoundCUsdt) public onlyOwner {
         compoundCUsdt = CErc20(_compoundCUsdt);
+        cUSD = IERC20(compoundCUsdt.underlying());
 
         // approve cUSDT for redeem/redeemUnderlying
         approve(IERC20(address(compoundCUsdt)), address(compoundCUsdt), Decimal.decimal(uint256(-1)));
+        approve(cUSD, address(compoundCUsdt), Decimal.decimal(uint256(-1)));
     }
 
     function setCusd(address _cUSD) public onlyOwner {
@@ -185,8 +188,11 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
         IERC20 inToken = balancerAcceptableToken(_inputToken);
         IERC20 outToken = balancerAcceptableToken(_outputToken);
         //___1. calc how much input tokens needed by given outTokenBought,
-        Decimal.decimal memory expectedTokenInAmount =
-            calcBalancerInGivenOut(address(inToken), address(outToken), outTokenBought);
+        Decimal.decimal memory expectedTokenInAmount = calcBalancerInGivenOut(
+            address(inToken),
+            address(outToken),
+            outTokenBought
+        );
         require(_maxInputTokenSold.cmp(expectedTokenInAmount) >= 0, "max input amount less than expected");
 
         //___2 transfer input tokens to exchangeWrapper
@@ -200,8 +206,13 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
         }
 
         //___3. swap
-        Decimal.decimal memory requiredInAmount =
-            balancerSwapOut(inToken, outToken, outTokenBought, _maxInputTokenSold, _maxPrice);
+        Decimal.decimal memory requiredInAmount = balancerSwapOut(
+            inToken,
+            outToken,
+            outTokenBought,
+            _maxInputTokenSold,
+            _maxPrice
+        );
 
         // if _outputToken is cUSD, redeem cUSDT to cUSD
         if (isCUSD(_outputToken)) {
@@ -231,14 +242,13 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
 
         // swap
         uint256 tokeSold = _toUint(_inputToken, _inputTokenSold);
-        (uint256 outAmountInSelfDecimals, ) =
-            balancerPool.swapExactAmountIn(
-                address(_inputToken),
-                tokeSold,
-                address(_outputToken),
-                _toUint(_outputToken, _minOutputTokenBought),
-                _maxPrice.toUint()
-            );
+        (uint256 outAmountInSelfDecimals, ) = balancerPool.swapExactAmountIn(
+            address(_inputToken),
+            tokeSold,
+            address(_outputToken),
+            _toUint(_outputToken, _minOutputTokenBought),
+            _maxPrice.toUint()
+        );
         require(outAmountInSelfDecimals > 0, "Balancer exchange error");
         emit BalancerSwap(tokeSold, outAmountInSelfDecimals);
 
@@ -262,14 +272,13 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
         // swap
         uint256 tokenBought = _toUint(_outputToken, _outputTokenBought);
         uint256 maxTokenSold = _toUint(_inputToken, _maxInputTokenSold);
-        (uint256 inAmountInSelfDecimals, ) =
-            balancerPool.swapExactAmountOut(
-                address(_inputToken),
-                maxTokenSold,
-                address(_outputToken),
-                tokenBought,
-                _maxPrice.toUint()
-            );
+        (uint256 inAmountInSelfDecimals, ) = balancerPool.swapExactAmountOut(
+            address(_inputToken),
+            maxTokenSold,
+            address(_outputToken),
+            tokenBought,
+            _maxPrice.toUint()
+        );
         require(inAmountInSelfDecimals > 0, "Balancer exchange error");
         emit BalancerSwap(inAmountInSelfDecimals, tokenBought);
 
@@ -281,7 +290,7 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
         returns (Decimal.decimal memory mintedAmount)
     {
         // https://compound.finance/docs/ctokens#mint
-        uint256 underlyingAmountInSelfDecimals = _toUint(usdtToken, _underlyingAmount);
+        uint256 underlyingAmountInSelfDecimals = _toUint(cUSD, _underlyingAmount);
         require(compoundCUsdt.mint(underlyingAmountInSelfDecimals) == 0, "Compound mint error");
 
         mintedAmount = compoundCTokenAmount(_underlyingAmount);
@@ -307,7 +316,7 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
         returns (Decimal.decimal memory outCTokenAmount)
     {
         // https://compound.finance/docs/ctokens#redeem-underlying
-        uint256 underlyingTokenIn6Decimals = _toUint(usdtToken, _underlyingAmount);
+        uint256 underlyingTokenIn6Decimals = _toUint(cUSD, _underlyingAmount);
         require(compoundCUsdt.redeemUnderlying(underlyingTokenIn6Decimals) == 0, "Compound redeemUnderlying error");
 
         outCTokenAmount = compoundCTokenAmount(_underlyingAmount);
@@ -327,9 +336,10 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
 
         // The amount of underlying tokens received is equal to the quantity of cTokens,
         // multiplied by the current Exchange Rate
-        Decimal.decimal memory underlyingTokenIn6Decimals =
-            Decimal.decimal(cTokenIn8Decimals).mulD(Decimal.decimal(exchangeRate));
-        underlyingAmount = _toDecimal(usdtToken, underlyingTokenIn6Decimals.toUint());
+        Decimal.decimal memory underlyingTokenIn6Decimals = Decimal.decimal(cTokenIn8Decimals).mulD(
+            Decimal.decimal(exchangeRate)
+        );
+        underlyingAmount = _toDecimal(cUSD, underlyingTokenIn6Decimals.toUint());
     }
 
     function compoundCTokenAmount(Decimal.decimal memory _underlyingAmount)
@@ -340,12 +350,14 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
         // The current exchange rate as an unsigned integer, scaled by 1e18.
         // ** calculation of decimals between tokens is under exchangeRateStored()
         uint256 exchangeRate = compoundCUsdt.exchangeRateStored();
-        uint256 underlyingTokenIn6Decimals = _toUint(usdtToken, _underlyingAmount);
+        uint256 underlyingTokenIn6Decimals = _toUint(cUSD, _underlyingAmount);
 
         // The amount of cTokens is equal to the quantity of underlying tokens received,
         // divided by the current Exchange Rate
-        uint256 cTokenIn8Decimals =
-            Decimal.decimal(underlyingTokenIn6Decimals).divD(Decimal.decimal(exchangeRate)).toUint();
+        uint256 cTokenIn8Decimals = Decimal
+            .decimal(underlyingTokenIn6Decimals)
+            .divD(Decimal.decimal(exchangeRate))
+            .toUint();
         cTokenAmount = _toDecimal(IERC20(address(compoundCUsdt)), cTokenIn8Decimals);
     }
 
@@ -366,15 +378,14 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
         uint256 outWeight = balancerPool.getDenormalizedWeight(_outToken);
         uint256 inBalance = balancerPool.getBalance(_inToken);
         uint256 outBalance = balancerPool.getBalance(_outToken);
-        uint256 expectedTokenInAmount =
-            balancerPool.calcInGivenOut(
-                inBalance,
-                inWeight,
-                outBalance,
-                outWeight,
-                givenOut,
-                balancerPool.getSwapFee()
-            );
+        uint256 expectedTokenInAmount = balancerPool.calcInGivenOut(
+            inBalance,
+            inWeight,
+            outBalance,
+            outWeight,
+            givenOut,
+            balancerPool.getSwapFee()
+        );
         return _toDecimal(IERC20(_inToken), expectedTokenInAmount);
     }
 

@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import { XadeOwnableUpgrade } from "./utils/XadeOwnableUpgrade.sol";
 import { Decimal, SafeMath } from "./utils/Decimal.sol";
 import { DecimalERC20 } from "./utils/DecimalERC20.sol";
-import { IMultiTokenRewardRecepient } from "./interface/IMultiTokenRewardRecepient.sol";
+import { IMultiTokenRewardRecepient } from "./interface/IMultiTokenRewardRecipient.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import { IInflationMonitor } from "./interface/IInflationMonitor.sol";
 
@@ -34,7 +34,6 @@ contract InflationMonitor is IInflationMonitor, XadeOwnableUpgrade, BlockContext
     Decimal.decimal public shutdownThreshold;
 
     IMultiTokenRewardRecepient private feePool;
-
 
     uint256[50] private __gap;
 
@@ -74,8 +73,9 @@ contract InflationMonitor is IInflationMonitor, XadeOwnableUpgrade, BlockContext
 
         Decimal.decimal memory withdrawn;
         for (uint256 i = len - 1; i > 0; i--) {
-            Decimal.decimal memory amount =
-                withdrawalHistory[i].cumulativeAmount.subD(withdrawalHistory[i - 1].cumulativeAmount);
+            Decimal.decimal memory amount = withdrawalHistory[i].cumulativeAmount.subD(
+                withdrawalHistory[i - 1].cumulativeAmount
+            );
             withdrawn = withdrawn.addD(amount);
 
             durationSinceLastWithdrawal += withdrawalHistory[i].timestamp.sub(withdrawalHistory[i - 1].timestamp);
@@ -94,7 +94,4 @@ contract InflationMonitor is IInflationMonitor, XadeOwnableUpgrade, BlockContext
         Decimal.decimal memory withdrawn = withdrawnAmountDuringThresholdPeriod();
         return withdrawn.divD(poolBalance).cmp(shutdownThreshold) >= 0;
     }
-
-
 }
-

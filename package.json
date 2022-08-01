@@ -67,8 +67,8 @@
         "husky": "3.1.0",
         "lint-staged": "9.5.0",
         "nyc": "15.0.1",
-        "prettier": "1.19.1",
-        "prettier-plugin-solidity": "1.0.0-beta.1",
+        "prettier": "^2.7.1",
+        "prettier-plugin-solidity": "^1.0.0-dev.23",
         "shelljs": "0.8.3",
         "solc": "0.6.9",
         "solhint": "3.3.1",
@@ -101,5 +101,9 @@
             "prettier --write",
             "git add"
         ]
+    },
+    "dependencies": {
+        "@openzeppelin/contracts": "^4.7.2",
+        "redstone-evm-connector": "^2.1.25"
     }
 }
