@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity 0.6.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import { SafeMath } from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
 
 contract PriceFeed is IPriceFeed, Ownable, BlockContext {
+
+    using SafeMath for uint256;
 
     event PriceFeedDataSet(bytes32 key, uint256 price, uint256 timestamp);
 
@@ -120,23 +123,23 @@ contract PriceFeed is IPriceFeed, Ownable, BlockContext {
         uint256 round = len - 1;
         PriceData memory priceRecord = priceFeedMap[_priceFeedKey].priceData[round];
         uint256 latestTimestamp = priceRecord.timestamp;
-        uint256 baseTimestamp = _blockTimestamp() - (_interval);
+        uint256 baseTimestamp = _blockTimestamp().sub(_interval);
         // if latest updated timestamp is earlier than target timestamp, return the latest price.
         if (latestTimestamp < baseTimestamp || round == 0) {
             return priceRecord.price;
         }
 
         // rounds are like snapshots, latestRound means the latest price snapshot. follow chainlink naming
-        uint256 cumulativeTime = _blockTimestamp() - (latestTimestamp);
+        uint256 cumulativeTime = _blockTimestamp().sub(latestTimestamp);
         uint256 previousTimestamp = latestTimestamp;
-        uint256 weightedPrice = priceRecord.price * (cumulativeTime);
+        uint256 weightedPrice = priceRecord.price.mul(cumulativeTime);
         while (true) {
             if (round == 0) {
                 // if cumulative time is less than requested interval, return current twap price
-                return (weightedPrice / (cumulativeTime));
+                return (weightedPrice.div(cumulativeTime));
             }
 
-            round = round - 1;
+            round = round.sub(1);
             // get current round timestamp and price
             priceRecord = priceFeedMap[_priceFeedKey].priceData[round];
             uint256 currentTimestamp = priceRecord.timestamp;
@@ -148,16 +151,16 @@ contract PriceFeed is IPriceFeed, Ownable, BlockContext {
                 // now is 1000, _interval is 100, then target timestamp is 900. If timestamp of current round is 970,
                 // and timestamp of NEXT round is 880, then the weighted time period will be (970 - 900) = 70,
                 // instead of (970 - 880)
-                weightedPrice = weightedPrice + (price * (previousTimestamp - (baseTimestamp)));
+                weightedPrice = weightedPrice.add(price.mul(previousTimestamp.sub(baseTimestamp)));
                 break;
             }
 
-            uint256 timeFraction = previousTimestamp - (currentTimestamp);
-            weightedPrice = weightedPrice + (price * (timeFraction));
-            cumulativeTime = cumulativeTime + (timeFraction);
+            uint256 timeFraction = previousTimestamp.sub(currentTimestamp);
+            weightedPrice = weightedPrice.add(price.mul(timeFraction));
+            cumulativeTime = cumulativeTime.add(timeFraction);
             previousTimestamp = currentTimestamp;
         }
-        return weightedPrice / (_interval);
+        return weightedPrice.div(_interval);
     }
 
     function getPreviousPrice(bytes32 _priceFeedKey, uint256 _numOfRoundBack) public view override returns (uint256) {

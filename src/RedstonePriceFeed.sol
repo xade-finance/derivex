@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity 0.6.9;
 
-import "redstone-evm-connector/lib/contracts/message-based/PriceAware.sol";
+import { PriceAware } from "redstone-evm-connector/lib/contracts/message-based/PriceAware.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import "./PriceFeed.sol";
 
