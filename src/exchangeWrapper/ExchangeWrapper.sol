@@ -34,7 +34,7 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
     BPool public balancerPool;
     CErc20 public compoundCUsdt;
     IERC20 private cUSD;
-    IERC20 private perpToken;
+    //IERC20 private perpToken;
     //**********************************************************//
     //    The above state variables can not change the order    //
     //**********************************************************//
@@ -50,11 +50,11 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
     function initialize(
         address _balancerPool,
         address _compoundCUsdt,
-        address _perpToken
+        address _cUSD
     ) external initializer {
         __Ownable_init();
 
-        perpToken = IERC20(_perpToken);
+        cUSD = IERC20(_cUSD);
         setBalancerPool(_balancerPool);
         setCompoundCUsdt(_compoundCUsdt);
     }
@@ -410,7 +410,7 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
 
         // compoundUnderlyingAmount gets n underlying tokens by given m cTokens
         // if input token is cUSD, spot price is 0.5(cUSDT/BAT). The price of USDT/BAT would be 0.5 x n
-        // if output token is USDT, spot price is 2(BAT/cUSDT) then price is 2/n
+        // if output token is cUSD, spot price is 2(BAT/cUSDT) then price is 2/n
         if (isCUSD(_inputToken)) {
             return price.mulD(compoundUnderlyingAmount(Decimal.one()));
         } else if (isCUSD(_outputToken)) {

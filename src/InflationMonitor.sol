@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import { XadeOwnableUpgrade } from "./utils/XadeOwnableUpgrade.sol";
 import { Decimal, SafeMath } from "./utils/Decimal.sol";
 import { DecimalERC20 } from "./utils/DecimalERC20.sol";
-import { IMultiTokenRewardRecepient } from "./interface/IMultiTokenRewardRecipient.sol";
+import { IMultiTokenRewardRecipient } from "./interface/IMultiTokenRewardRecipient.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import { IInflationMonitor } from "./interface/IInflationMonitor.sol";
 
@@ -33,11 +33,11 @@ contract InflationMonitor is IInflationMonitor, XadeOwnableUpgrade, BlockContext
      */
     Decimal.decimal public shutdownThreshold;
 
-    IMultiTokenRewardRecepient private feePool;
+    IMultiTokenRewardRecipient private feePool;
 
     uint256[50] private __gap;
 
-    function initialize(IMultiTokenRewardRecepient _feePool) public initializer {
+    function initialize(IMultiTokenRewardRecipient _feePool) public initializer {
         __Ownable_init();
 
         feePool = _feePool;
@@ -57,7 +57,7 @@ contract InflationMonitor is IInflationMonitor, XadeOwnableUpgrade, BlockContext
         } else {
             cumulativeAmount = withdrawalHistory[len - 1].cumulativeAmount.addD(_amount);
         }
-        withdrawalHistory.push(withdrawalEntry({ timestamp: _blockTimestamp(), cumulativeAmount: cumulativeAmount }));
+        withdrawalHistory.push(WithdrawalEntry({ timestamp: _blockTimestamp(), cumulativeAmount: cumulativeAmount }));
     }
 
     function withdrawnAmountDuringThresholdPeriod() public view returns (Decimal.decimal memory) {
