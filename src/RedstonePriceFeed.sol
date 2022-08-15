@@ -2,7 +2,7 @@
 
 pragma solidity 0.6.9;
 
-import { PriceAware } from "redstone-evm-connector/lib/contracts/message-based/PriceAware.sol";
+import "./PriceAware.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import "./PriceFeed.sol";
 
@@ -15,7 +15,6 @@ contract RedstonePriceFeed is PriceFeed, PriceAware, BlockContext {
 
     function updatePrice(bytes32 _priceFeedKey) external {
         requireKeyExisted(_priceFeedKey, true);
-        require(_timestamp > getLatestTimestamp(_priceFeedKey), "incorrect timestamp");
         
         uint256 price = getPriceFromMsg(bytes32(_priceFeedKey));
         setLatestData(_priceFeedKey, price, _blockTimestamp());
