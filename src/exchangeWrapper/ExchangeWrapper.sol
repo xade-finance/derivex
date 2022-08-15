@@ -34,7 +34,6 @@ contract ExchangeWrapper is XadeOwnableUpgrade, IExchangeWrapper, DecimalERC20 {
     BPool public balancerPool;
     CErc20 public compoundCUsdt;
     IERC20 private cUSD;
-    //IERC20 private perpToken;
     //**********************************************************//
     //    The above state variables can not change the order    //
     //**********************************************************//
