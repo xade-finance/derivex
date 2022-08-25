@@ -7,4 +7,8 @@ import { Decimal } from "../utils/Decimal.sol";
 
 interface IMultiTokenRewardRecipient {
     function notifyTokenAmount(IERC20 _token, Decimal.decimal calldata _amount) external;
+
+    function poolBalance() external view returns (Decimal.decimal memory);
+
+    function withdrawToInsuranceFund(IERC20 _token, Decimal.decimal calldata _amount) external;
 }

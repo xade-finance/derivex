@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import { Decimal } from "../utils/Decimal.sol";
 
 interface IInflationMonitor {
-    function isOverMintThreshold() external view returns (bool);
+    function isOverThreshold() external view returns (bool);
 
-    function appendMintedTokenHistory(Decimal.decimal calldata _amount) external;
+    function appendToWithdrawalHistory(Decimal.decimal calldata _amount) external;
 }
