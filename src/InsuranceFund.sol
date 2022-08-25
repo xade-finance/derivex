@@ -3,9 +3,7 @@ pragma solidity 0.6.9;
 pragma experimental ABIEncoderV2;
 
 import { XadeOwnableUpgrade } from "./utils/XadeOwnableUpgrade.sol";
-import {
-    ReentrancyGuardUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuardUpgradeSafe } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import { Decimal } from "./utils/Decimal.sol";
 import { IExchangeWrapper } from "./interface/IExchangeWrapper.sol";
@@ -14,6 +12,7 @@ import { BlockContext } from "./utils/BlockContext.sol";
 import { DecimalERC20 } from "./utils/DecimalERC20.sol";
 import { IAmm } from "./interface/IAmm.sol";
 import { IInflationMonitor } from "./interface/IInflationMonitor.sol";
+import { IMultiTokenRewardRecipient } from "./interface/IMultiTokenRewardRecipient.sol";
 
 contract InsuranceFund is IInsuranceFund, XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe, DecimalERC20 {
     using Decimal for Decimal.decimal;
@@ -39,7 +38,8 @@ contract InsuranceFund is IInsuranceFund, XadeOwnableUpgrade, BlockContext, Reen
     IERC20[] public quoteTokens;
 
     // contract dependencies
-    address private feePool;
+    IMultiTokenRewardRecipient private feePool;
+    IExchangeWrapper public exchange;
     IInflationMonitor public inflationMonitor;
     address private beneficiary;
     IERC20 public cUSD;
@@ -203,8 +203,11 @@ contract InsuranceFund is IInsuranceFund, XadeOwnableUpgrade, BlockContext, Reen
         Decimal.decimal memory valueOfMaxValueToken = balanceOf(denominatedToken);
         for (uint256 i = 1; i < numOfQuoteTokens; i++) {
             IERC20 quoteToken = quoteTokens[i];
-            Decimal.decimal memory quoteTokenValue =
-                exchange.getInputPrice(quoteToken, denominatedToken, balanceOf(quoteToken));
+            Decimal.decimal memory quoteTokenValue = exchange.getInputPrice(
+                quoteToken,
+                denominatedToken,
+                balanceOf(quoteToken)
+            );
             if (quoteTokenValue.cmp(valueOfMaxValueToken) > 0) {
                 maxValueToken = quoteToken;
                 valueOfMaxValueToken = quoteTokenValue;
@@ -246,8 +249,11 @@ contract InsuranceFund is IInsuranceFund, XadeOwnableUpgrade, BlockContext, Reen
         for (uint256 i = 0; i < orderedTokens.length; i++) {
             // get how many amount of quote token i is still required
             Decimal.decimal memory swappedQuoteToken;
-            Decimal.decimal memory otherQuoteRequiredAmount =
-                exchange.getOutputPrice(orderedTokens[i], _quoteToken, _requiredQuoteAmount);
+            Decimal.decimal memory otherQuoteRequiredAmount = exchange.getOutputPrice(
+                orderedTokens[i],
+                _quoteToken,
+                _requiredQuoteAmount
+            );
 
             // if balance of token i can afford the left debt, swap and return
             if (otherQuoteRequiredAmount.toUint() <= balanceOf(orderedTokens[i]).toUint()) {
@@ -286,12 +292,18 @@ contract InsuranceFund is IInsuranceFund, XadeOwnableUpgrade, BlockContext, Reen
         // insertion sort
         for (uint256 i = 0; i < getQuoteTokenLength(); i++) {
             IERC20 currentToken = quoteTokens[i];
-            Decimal.decimal memory currentCUSDValue =
-                exchange.getInputPrice(currentToken, cUSD, balanceOf(currentToken));
+            Decimal.decimal memory currentCUSDValue = exchange.getInputPrice(
+                currentToken,
+                cUSD,
+                balanceOf(currentToken)
+            );
 
             for (uint256 j = i; j > 0; j--) {
-                Decimal.decimal memory subsetCUSDValue =
-                    exchange.getInputPrice(tokens[j - 1], cUSD, balanceOf(tokens[j - 1]));
+                Decimal.decimal memory subsetCUSDValue = exchange.getInputPrice(
+                    tokens[j - 1],
+                    cUSD,
+                    balanceOf(tokens[j - 1])
+                );
                 if (currentCUSDValue.toUint() > subsetCUSDValue.toUint()) {
                     tokens[j] = tokens[j - 1];
                     tokens[j - 1] = currentToken;
