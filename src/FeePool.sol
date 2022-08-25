@@ -3,16 +3,27 @@ pragma solidity 0.6.9;
 pragma experimental ABIEncoderV2;
 
 import { XadeOwnableUpgrade } from "./utils/XadeOwnableUpgrade.sol";
+// prettier-ignore
+// solhint-disable-next-line
 import {
     ReentrancyGuardUpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import { Decimal } from "./utils/Decimal.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import { DecimalERC20 } from "./utils/DecimalERC20.sol";
 import { AddressArray } from "./utils/AddressArray.sol";
+import { IInsuranceFund } from "./interface/IInsuranceFund.sol";
 import { IInflationMonitor } from "./interface/IInflationMonitor.sol";
 import { IMultiTokenRewardRecipient } from "./interface/IMultiTokenRewardRecipient.sol";
 
-contract FeePool is XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe, DecimalERC20, IMultiTokenRewardRecipient {
+contract FeePool is
+    XadeOwnableUpgrade,
+    BlockContext,
+    ReentrancyGuardUpgradeSafe,
+    DecimalERC20,
+    IMultiTokenRewardRecipient
+{
     using Decimal for Decimal.decimal;
     using AddressArray for address[];
 
@@ -55,7 +66,7 @@ contract FeePool is XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe
 
     function notifyTokenAmount(IERC20 _token, Decimal.decimal calldata _amount) external override {
         require(_amount != 0, "invalid amount");
-        if (!feeTokenMap[_token]){
+        if (!feeTokenMap[_token]) {
             addFeeToken(_token);
         }
     }
@@ -66,8 +77,8 @@ contract FeePool is XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe
 
         bool hasToll;
         for (uint256 i; i < feeTokens.length; i++) {
-            address token = feeTokens[i];
-            hasToll = _transferToOperator(IERC20(token)) || hasToll;
+            IERC20 token = feeTokens[i];
+            hasToll = _transferToOperator(token) || hasToll;
         }
         // revert if total fee of all tokens is zero
         require(hasToll, "fee is now zero");
@@ -78,29 +89,27 @@ contract FeePool is XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe
      * @param _token the token to be withdrawn
      * @param _amount the amount of token caller want to withdraw
      */
-    function withdrawToInsuranceFund(IERC20 _token, Decimal.decimal calldata _amount) external {
-        require(InsuranceFund == _msgSender(), "caller is not Insurance Fund");
+    function withdrawToInsuranceFund(IERC20 _token, Decimal.decimal calldata _amount) external override {
+        require(address(InsuranceFund) == _msgSender(), "caller is not Insurance Fund");
         require(isFeeTokenExisted(_token), "Asset is not avalible");
-        
+
         _transfer(_token, address(InsuranceFund), _amount);
-        InflationMonitor.appendToWithdrawalHistory(_amount);
+        inflationMonitor.appendToWithdrawalHistory(_amount);
         emit Withdrawn(_msgSender(), _amount.toUint());
     }
 
     /** @notice withdraw a specific amount of the token
-    * @param _token the token to be withdrawn
-    * @param _amount the amount of token caller want to withdraw 
-    */
+     * @param _token the token to be withdrawn
+     * @param _amount the amount of token caller want to withdraw
+     */
     function withdraw(IERC20 _token, Decimal.decimal calldata _amount) external onlyOwner {
-        require(isFeeTokenExisted(_token),"Asset not avalible");
+        require(isFeeTokenExisted(_token), "Asset not avalible");
 
         _transfer(_token, address(feePoolOperator), _amount);
         emit Withdrawn(_msgSender(), _amount.toUint());
     }
 
-
-    function addFeeToken(IERC20 _token) external onlyOwner {
-        require(feeTokens.length < TOKEN_AMOUNT_LIMIT, "exceed token amount limit");
+    function addFeeToken(IERC20 _token) internal {
         require(feeTokens.add(address(_token)), "invalid input");
 
         emit FeeTokenAdded(address(_token));
@@ -117,7 +126,6 @@ contract FeePool is XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe
         emit FeeTokenRemoved(address(_token));
     }
 
-    
     // SETTERS
 
     function setInsuranceFund(IInsuranceFund _insuranceFund) external onlyOwner {
@@ -128,7 +136,7 @@ contract FeePool is XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe
         inflationMonitor = _inflationMonitor;
     }
 
-     function setFeePoolOperator(address _feePoolOperator) external onlyOwner {
+    function setFeePoolOperator(address _feePoolOperator) external onlyOwner {
         require(_feePoolOperator != address(0), "invalid input");
         require(_feePoolOperator != feePoolOperator, "input is the same as the current one");
         feePoolOperator = _feePoolOperator;
@@ -139,7 +147,7 @@ contract FeePool is XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe
 
     function _transferToOperator(IERC20 _token) private returns (bool) {
         Decimal.decimal memory balance = _balanceOf(_token, address(this));
-        if(balance.toUint() != 0) {
+        if (balance.toUint() != 0) {
             _transfer(_token, address(feePoolOperator), balance);
             emit Withdrawn(address(feePoolOperator), balance);
             return true;
@@ -147,14 +155,13 @@ contract FeePool is XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe
         return false;
     }
 
-
     // VIEW FUNCTIONS
 
     function isFeeTokenExisted(IERC20 _token) public view returns (bool) {
         return feeTokens.isExisted(address(_token));
     }
 
-     function getFeeTokenLength() external view returns (uint256) {
+    function getFeeTokenLength() external view returns (uint256) {
         return feeTokens.length;
     }
 
@@ -162,12 +169,12 @@ contract FeePool is XadeOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe
         return _balanceOf(_token, address(this));
     }
 
-    function poolBalance() public view returns (Decimal.decimal memory) {
+    function poolBalance() external view override returns (Decimal.decimal memory) {
         if (feeTokens.length == 0) {
             return 0;
         }
-        Decimal.decimal memory balance; 
-        for (uint i = 0, i <= feeTokens.length, i++) {
+        Decimal.decimal memory balance;
+        for (uint256 i = 0; i <= feeTokens.length; i++) {
             balance += balanceOf(feeTokens[i]);
         }
         return balance;
