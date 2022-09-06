@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.6.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./utils/XadeOwnableUpgrade.sol";
+//import "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeMath } from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 
-contract PriceFeed is IPriceFeed, Ownable, BlockContext {
-
+contract PriceFeed is IPriceFeed, BlockContext, Initializable, XadeOwnableUpgrade {
     using SafeMath for uint256;
 
     event PriceFeedDataSet(bytes32 key, uint256 price, uint256 timestamp);
@@ -66,7 +67,6 @@ contract PriceFeed is IPriceFeed, Ownable, BlockContext {
         }
     }
 
-
     //
     // INTERFACE IMPLEMENTATION
     //
@@ -76,8 +76,7 @@ contract PriceFeed is IPriceFeed, Ownable, BlockContext {
         uint256 _price,
         uint256 _timestamp
     ) internal override {
-
-        PriceData memory data = PriceData({ price: _price, timestamp: _timestamp});
+        PriceData memory data = PriceData({ price: _price, timestamp: _timestamp });
         priceFeedMap[_priceFeedKey].priceData.push(data);
 
         emit PriceFeedDataSet(_priceFeedKey, _price, _timestamp);
@@ -200,4 +199,3 @@ contract PriceFeed is IPriceFeed, Ownable, BlockContext {
         }
     }
 }
-
