@@ -2,13 +2,12 @@
 pragma solidity 0.6.9;
 
 import "./utils/XadeOwnableUpgrade.sol";
-//import "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeMath } from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 
-contract PriceFeed is IPriceFeed, BlockContext, Initializable, XadeOwnableUpgrade {
+contract PriceFeedL2 is IPriceFeed, BlockContext, Initializable, XadeOwnableUpgrade {
     using SafeMath for uint256;
 
     event PriceFeedDataSet(bytes32 key, uint256 price, uint256 timestamp);
@@ -75,7 +74,7 @@ contract PriceFeed is IPriceFeed, BlockContext, Initializable, XadeOwnableUpgrad
         bytes32 _priceFeedKey,
         uint256 _price,
         uint256 _timestamp
-    ) internal override {
+    ) external override {
         PriceData memory data = PriceData({ price: _price, timestamp: _timestamp });
         priceFeedMap[_priceFeedKey].priceData.push(data);
 
@@ -186,6 +185,12 @@ contract PriceFeed is IPriceFeed, BlockContext, Initializable, XadeOwnableUpgrad
     //
     // END OF INTERFACE IMPLEMENTATION
     //
+
+    function getPriceFeedLength(bytes32 _priceFeedKey) public view returns (uint256 length) {
+        return priceFeedMap[_priceFeedKey].priceData.length;
+    }
+
+    // INTERNAL
 
     function isExistedKey(bytes32 _priceFeedKey) private view returns (bool) {
         return priceFeedMap[_priceFeedKey].registered;
