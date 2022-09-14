@@ -25,7 +25,7 @@ contract FeePool is
     IMultiTokenRewardRecipient
 {
     using Decimal for Decimal.decimal;
-    using AddressArray for address[];
+    using AddressArray for IERC20[];
 
     // EVENTS
     //
@@ -65,8 +65,8 @@ contract FeePool is
     }
 
     function notifyTokenAmount(IERC20 _token, Decimal.decimal calldata _amount) external override {
-        require(_amount != 0, "invalid amount");
-        if (!feeTokenMap[_token]) {
+        //require(_amount != Decimal.zero(), "invalid amount");
+        if (!feeTokenMap[address(_token)]) {
             addFeeToken(_token);
         }
     }
@@ -110,7 +110,7 @@ contract FeePool is
     }
 
     function addFeeToken(IERC20 _token) internal {
-        require(feeTokens.add(address(_token)), "invalid input");
+        require(feeTokens.add(feeTokens, address(_token)), "invalid input");
 
         emit FeeTokenAdded(address(_token));
     }
