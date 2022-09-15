@@ -65,9 +65,15 @@ contract Amm is IAmm, XadeOwnableUpgrade, BlockContext {
     }
 
     // internal usage
-    enum QuoteAssetDir { QUOTE_IN, QUOTE_OUT }
+    enum QuoteAssetDir {
+        QUOTE_IN,
+        QUOTE_OUT
+    }
     // internal usage
-    enum TwapCalcOption { RESERVE_ASSET, INPUT_ASSET }
+    enum TwapCalcOption {
+        RESERVE_ASSET,
+        INPUT_ASSET
+    }
 
     // To record current base/quote asset to calculate TWAP
 
@@ -264,11 +270,12 @@ contract Amm is IAmm, XadeOwnableUpgrade, BlockContext {
         require(_blockTimestamp() >= nextFundingTime, "settle funding too early");
 
         // premium = twapMarketPrice - twapIndexPrice
-        // timeFraction = fundingPeriod(10 Minutes) / 1 day
+        // timeFraction = fundingPeriod(1 hour) / 1 day
         // premiumFraction = premium * timeFraction
         Decimal.decimal memory underlyingPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
-        SignedDecimal.signedDecimal memory premium =
-            MixedDecimal.fromDecimal(getTwapPrice(spotPriceTwapInterval)).subD(underlyingPrice);
+        SignedDecimal.signedDecimal memory premium = MixedDecimal.fromDecimal(getTwapPrice(spotPriceTwapInterval)).subD(
+            underlyingPrice
+        );
         SignedDecimal.signedDecimal memory premiumFraction = premium.mulScalar(fundingPeriod).divScalar(int256(1 days));
 
         // update funding rate = premiumFraction / twapIndexPrice
@@ -305,19 +312,17 @@ contract Amm is IAmm, XadeOwnableUpgrade, BlockContext {
 
         // measure the trader position's notional value on the old curve
         // (by simulating closing the position)
-        Decimal.decimal memory posNotional =
-            getOutputPriceWithReserves(
-                isPositiveValue ? Dir.ADD_TO_AMM : Dir.REMOVE_FROM_AMM,
-                _baseAssetAmount.abs(),
-                _fromQuoteReserve,
-                _fromBaseReserve
-            );
+        Decimal.decimal memory posNotional = getOutputPriceWithReserves(
+            isPositiveValue ? Dir.ADD_TO_AMM : Dir.REMOVE_FROM_AMM,
+            _baseAssetAmount.abs(),
+            _fromQuoteReserve,
+            _fromBaseReserve
+        );
 
         // calculate and apply the required size on the new curve
-        SignedDecimal.signedDecimal memory newBaseAsset =
-            MixedDecimal.fromDecimal(
-                getInputPrice(isPositiveValue ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM, posNotional)
-            );
+        SignedDecimal.signedDecimal memory newBaseAsset = MixedDecimal.fromDecimal(
+            getInputPrice(isPositiveValue ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM, posNotional)
+        );
         return newBaseAsset.mulScalar(isPositiveValue ? 1 : int256(-1));
     }
 
@@ -444,10 +449,9 @@ contract Amm is IAmm, XadeOwnableUpgrade, BlockContext {
         (Decimal.decimal memory upperLimit, Decimal.decimal memory lowerLimit) = getPriceBoundariesOfLastBlock();
 
         Decimal.decimal memory quoteAssetExchanged = getOutputPrice(_dirOfBase, _baseAssetAmount);
-        Decimal.decimal memory price =
-            (_dirOfBase == Dir.REMOVE_FROM_AMM)
-                ? quoteAssetReserve.addD(quoteAssetExchanged).divD(baseAssetReserve.subD(_baseAssetAmount))
-                : quoteAssetReserve.subD(quoteAssetExchanged).divD(baseAssetReserve.addD(_baseAssetAmount));
+        Decimal.decimal memory price = (_dirOfBase == Dir.REMOVE_FROM_AMM)
+            ? quoteAssetReserve.addD(quoteAssetExchanged).divD(baseAssetReserve.subD(_baseAssetAmount))
+            : quoteAssetReserve.subD(quoteAssetExchanged).divD(baseAssetReserve.addD(_baseAssetAmount));
 
         if (price.cmp(upperLimit) <= 0 && price.cmp(lowerLimit) >= 0) {
             return false;
@@ -602,8 +606,11 @@ contract Amm is IAmm, XadeOwnableUpgrade, BlockContext {
         Decimal.decimal memory oraclePrice = getUnderlyingPrice();
         require(oraclePrice.toUint() > 0, "underlying price is 0");
         Decimal.decimal memory marketPrice = getSpotPrice();
-        Decimal.decimal memory oracleSpreadRatioAbs =
-            MixedDecimal.fromDecimal(marketPrice).subD(oraclePrice).divD(oraclePrice).abs();
+        Decimal.decimal memory oracleSpreadRatioAbs = MixedDecimal
+            .fromDecimal(marketPrice)
+            .subD(oraclePrice)
+            .divD(oraclePrice)
+            .abs();
 
         return oracleSpreadRatioAbs.toUint() >= MAX_ORACLE_SPREAD_RATIO ? true : false;
     }
@@ -651,8 +658,9 @@ contract Amm is IAmm, XadeOwnableUpgrade, BlockContext {
         }
 
         bool isAddToAmm = _dirOfQuote == Dir.ADD_TO_AMM;
-        SignedDecimal.signedDecimal memory invariant =
-            MixedDecimal.fromDecimal(_quoteAssetPoolAmount.mulD(_baseAssetPoolAmount));
+        SignedDecimal.signedDecimal memory invariant = MixedDecimal.fromDecimal(
+            _quoteAssetPoolAmount.mulD(_baseAssetPoolAmount)
+        );
         SignedDecimal.signedDecimal memory baseAssetAfter;
         Decimal.decimal memory quoteAssetAfter;
         Decimal.decimal memory baseAssetBought;
@@ -689,8 +697,9 @@ contract Amm is IAmm, XadeOwnableUpgrade, BlockContext {
         }
 
         bool isAddToAmm = _dirOfBase == Dir.ADD_TO_AMM;
-        SignedDecimal.signedDecimal memory invariant =
-            MixedDecimal.fromDecimal(_quoteAssetPoolAmount.mulD(_baseAssetPoolAmount));
+        SignedDecimal.signedDecimal memory invariant = MixedDecimal.fromDecimal(
+            _quoteAssetPoolAmount.mulD(_baseAssetPoolAmount)
+        );
         SignedDecimal.signedDecimal memory quoteAssetAfter;
         Decimal.decimal memory baseAssetAfter;
         Decimal.decimal memory quoteAssetSold;
@@ -980,11 +989,10 @@ contract Amm is IAmm, XadeOwnableUpgrade, BlockContext {
     ) internal view {
         // have lower bound when position size is long
         if (_positionSize.toInt() > 0) {
-            Decimal.decimal memory liquidityMultiplierLowerBound =
-                _positionSize
-                    .addD(Decimal.decimal(MARGIN_FOR_LIQUIDITY_MIGRATION_ROUNDING))
-                    .divD(baseAssetReserve)
-                    .abs();
+            Decimal.decimal memory liquidityMultiplierLowerBound = _positionSize
+                .addD(Decimal.decimal(MARGIN_FOR_LIQUIDITY_MIGRATION_ROUNDING))
+                .divD(baseAssetReserve)
+                .abs();
             require(_liquidityMultiplier.cmp(liquidityMultiplierLowerBound) >= 0, "illegal liquidity multiplier");
         }
     }
@@ -993,18 +1001,22 @@ contract Amm is IAmm, XadeOwnableUpgrade, BlockContext {
         LiquidityChangedSnapshot memory latestLiquiditySnapshot = getLatestLiquidityChangedSnapshots();
 
         // get last liquidity changed history to calc new quote/base reserve
-        Decimal.decimal memory previousK =
-            latestLiquiditySnapshot.baseAssetReserve.mulD(latestLiquiditySnapshot.quoteAssetReserve);
-        SignedDecimal.signedDecimal memory lastInitBaseReserveInNewCurve =
-            latestLiquiditySnapshot.totalPositionSize.addD(latestLiquiditySnapshot.baseAssetReserve);
-        SignedDecimal.signedDecimal memory lastInitQuoteReserveInNewCurve =
-            MixedDecimal.fromDecimal(previousK).divD(lastInitBaseReserveInNewCurve);
+        Decimal.decimal memory previousK = latestLiquiditySnapshot.baseAssetReserve.mulD(
+            latestLiquiditySnapshot.quoteAssetReserve
+        );
+        SignedDecimal.signedDecimal memory lastInitBaseReserveInNewCurve = latestLiquiditySnapshot
+            .totalPositionSize
+            .addD(latestLiquiditySnapshot.baseAssetReserve);
+        SignedDecimal.signedDecimal memory lastInitQuoteReserveInNewCurve = MixedDecimal.fromDecimal(previousK).divD(
+            lastInitBaseReserveInNewCurve
+        );
 
         // settlementPrice = SUM(Open Position Notional Value) / SUM(Position Size)
         // `Open Position Notional Value` = init quote reserve - current quote reserve
         // `Position Size` = init base reserve - current base reserve
-        SignedDecimal.signedDecimal memory positionNotionalValue =
-            lastInitQuoteReserveInNewCurve.subD(quoteAssetReserve);
+        SignedDecimal.signedDecimal memory positionNotionalValue = lastInitQuoteReserveInNewCurve.subD(
+            quoteAssetReserve
+        );
 
         // if total position size less than IGNORABLE_DIGIT_FOR_SHUTDOWN, treat it as 0 positions due to rounding error
         if (totalPositionSize.toUint() > IGNORABLE_DIGIT_FOR_SHUTDOWN) {
