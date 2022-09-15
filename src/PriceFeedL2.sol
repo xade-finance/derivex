@@ -196,7 +196,7 @@ contract PriceFeedL2 is IPriceFeed, BlockContext, Initializable, XadeOwnableUpgr
         return priceFeedMap[_priceFeedKey].registered;
     }
 
-    function requireKeyExisted(bytes32 _key, bool _existed) private view {
+    function requireKeyExisted(bytes32 _key, bool _existed) internal view {
         if (_existed) {
             require(isExistedKey(_key), "key not existed");
         } else {
