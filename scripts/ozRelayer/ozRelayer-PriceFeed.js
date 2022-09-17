@@ -15,7 +15,7 @@ exports.main = async function(signer) {
     wrappedContract.updatePrice("BTC");        
 }
 
-// Entrypoint for Autotask
+// Entry point for Autotask
 exports.handler = async function(credentials) {
     const provider = new DefenderRelayProvider(credentials);
     const signer = new DefenderRelaySigner(credentials, provider, {speed: fast})
