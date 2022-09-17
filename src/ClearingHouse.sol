@@ -174,6 +174,7 @@ contract ClearingHouse is
     struct PositionId {
         address trader;
         IAmm amm;
+        bool open;
     }
 
     //**********************************************************//
@@ -819,25 +820,27 @@ contract ClearingHouse is
             address trader = positionIds[i].trader;
             IAmm amm = positionIds[i].amm;
 
-            SignedDecimal.signedDecimal memory marginRatio = getMarginRatio(amm, trader);
+            if (positionIds[i].open) {
+                SignedDecimal.signedDecimal memory marginRatio = getMarginRatio(amm, trader);
 
-            // including oracle-based margin ratio as reference price when amm is over spread limit
-            if (amm.isOverSpreadLimit()) {
-                SignedDecimal.signedDecimal memory marginRatioBasedOnOracle = _getMarginRatioByCalcOption(
-                    amm,
-                    trader,
-                    PnlCalcOption.ORACLE
-                );
-                if (marginRatioBasedOnOracle.subD(marginRatio).toInt() > 0) {
-                    marginRatio = marginRatioBasedOnOracle;
+                // including oracle-based margin ratio as reference price when amm is over spread limit
+                if (amm.isOverSpreadLimit()) {
+                    SignedDecimal.signedDecimal memory marginRatioBasedOnOracle = _getMarginRatioByCalcOption(
+                        amm,
+                        trader,
+                        PnlCalcOption.ORACLE
+                    );
+                    if (marginRatioBasedOnOracle.subD(marginRatio).toInt() > 0) {
+                        marginRatio = marginRatioBasedOnOracle;
+                    }
                 }
-            }
-            int256 remainingMarginRatio = marginRatio.subD(maintenanceMarginRatio).toInt();
-            if (remainingMarginRatio < 0) {
-                PositionId memory positionX;
-                positionX.amm = amm;
-                positionX.trader = trader;
-                toBeLiquidated[i] = positionX;
+                int256 remainingMarginRatio = marginRatio.subD(maintenanceMarginRatio).toInt();
+                if (remainingMarginRatio < 0) {
+                    PositionId memory positionX;
+                    positionX.amm = amm;
+                    positionX.trader = trader;
+                    toBeLiquidated[i] = positionX;
+                }
             }
         }
         return toBeLiquidated;
@@ -881,8 +884,7 @@ contract ClearingHouse is
         uint256 idLength = positionIds.length;
         for (uint256 i = 0; i < idLength; i++) {
             if (positionIds[i].amm == _amm && positionIds[i].trader == _trader) {
-                positionIds[i] = positionIds[positionIds.length - 1];
-                positionIds.pop();
+                positionIds[i].open = false;
             }
         }
     }
@@ -1349,10 +1351,18 @@ contract ClearingHouse is
     }
 
     function setPositionId(IAmm _amm, address _trader) private {
-        PositionId memory position;
-        position.amm = _amm;
-        position.trader = _trader;
-        positionIds.push(position);
+        uint256 idLength = positionIds.length;
+        for (uint256 i = 0; i < idLength; i++) {
+            if (positionIds[i].amm == _amm && positionIds[i].trader == _trader) {
+                positionIds[i].open = true;
+            } else {
+                PositionId memory position;
+                position.amm = _amm;
+                position.trader = _trader;
+                position.open = true;
+                positionIds.push(position);
+            }
+        }
     }
 
     //
