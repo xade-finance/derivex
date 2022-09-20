@@ -15,7 +15,7 @@ contract RedstonePriceFeed is PriceAware, BlockContext, PriceFeedL2 {
     function updatePrice(bytes32 _priceFeedKey) external {
         requireKeyExisted(_priceFeedKey, true);
 
-        uint256 price = getPriceFromMsg(bytes32(_priceFeedKey));
-        super.setLatestData(_priceFeedKey, price, _blockTimestamp());
+        uint256 price = getPriceFromMsg(_priceFeedKey);
+        this.setLatestData(_priceFeedKey, price, _blockTimestamp());
     }
 }

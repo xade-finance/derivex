@@ -39,7 +39,7 @@ contract FeePool is
     //    The below state variables can not change the order    //
     //**********************************************************//
     mapping(address => bool) private feeTokenMap;
-    IERC20[] public feeTokens;
+    address[] public feeTokens;
 
     // contract dependencies
     IInsuranceFund public InsuranceFund;
@@ -65,8 +65,8 @@ contract FeePool is
     }
 
     function notifyTokenAmount(IERC20 _token, Decimal.decimal calldata _amount) external override {
-        require(_amount != 0, "invalid amount");
-        if (!feeTokenMap[_token]) {
+        //require(_amount != Decimal.zero(), "invalid amount");
+        if (!feeTokenMap[address(_token)]) {
             addFeeToken(_token);
         }
     }
@@ -77,7 +77,7 @@ contract FeePool is
 
         bool hasToll;
         for (uint256 i; i < feeTokens.length; i++) {
-            IERC20 token = feeTokens[i];
+            IERC20 token = IERC20(feeTokens[i]);
             hasToll = _transferToOperator(token) || hasToll;
         }
         // revert if total fee of all tokens is zero
@@ -149,7 +149,7 @@ contract FeePool is
         Decimal.decimal memory balance = _balanceOf(_token, address(this));
         if (balance.toUint() != 0) {
             _transfer(_token, address(feePoolOperator), balance);
-            emit Withdrawn(address(feePoolOperator), balance);
+            emit Withdrawn(address(feePoolOperator), balance.toUint());
             return true;
         }
         return false;
@@ -171,11 +171,11 @@ contract FeePool is
 
     function poolBalance() external view override returns (Decimal.decimal memory) {
         if (feeTokens.length == 0) {
-            return 0;
+            return Decimal.zero();
         }
         Decimal.decimal memory balance;
         for (uint256 i = 0; i <= feeTokens.length; i++) {
-            balance += balanceOf(feeTokens[i]);
+            balance = Decimal.addD(balance, balanceOf(IERC20(feeTokens[i])));
         }
         return balance;
     }
