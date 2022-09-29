@@ -4,8 +4,8 @@ import { MockProvider, solidity } from "ethereum-waffle"
 import { ContractFactory } from "ethers"
 import { ethers, upgrades } from "hardhat"
 import { OzContractDeployer } from "../../publish/OzContractDeployer"
-import { UpgradableContractV1, UpgradableContractV2 } from "../../types/ethers"
-
+import { UpgradableContractV1 } from "../../src/mock/UpgradableContractV1.sol"
+import { UpgradableContractV2 } from "../../src/mock/UpgradableContractV2.sol"
 use(solidity)
 
 // conflict with hardhat-gas-reporter without proxyResolver

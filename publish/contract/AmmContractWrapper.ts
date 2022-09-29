@@ -3,7 +3,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { BigNumber } from "ethers"
 import { ethers } from "hardhat"
-import { Amm, IPriceFeed } from "../../types/ethers"
+import { Amm } from "../../src/Amm.sol"
+import { IPriceFeed } from "../../src/interface/IPriceFeed.sol"
 import { ContractWrapper } from "./ContractWrapper"
 import { AmmDeployArgs } from "./DeployConfig"
 

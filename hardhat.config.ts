@@ -4,6 +4,8 @@ import "@nomiclabs/hardhat-truffle5"
 import "@nomiclabs/hardhat-waffle"
 import "@openzeppelin/hardhat-upgrades"
 import "@typechain/hardhat"
+import "@typechain/ethers-v5"
+import "ethers"
 // need to write a open zeppelin's proxyResolver if using any deployProxy in test case
 // https://github.com/cgewecke/eth-gas-reporter/blob/master/docs/advanced.md
 import "hardhat-gas-reporter"
@@ -162,6 +164,15 @@ const config: HardhatUserConfig = {
         // Obtain one at https://etherscan.io/
         apiKey: ETHERSCAN_API_KEY,
     },
+    
 }
+
+task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
+    const accounts = await hre.ethers.getSigners();
+  
+    for (const account of accounts) {
+      console.log(account.address);
+    }
+  });
 
 export default config
