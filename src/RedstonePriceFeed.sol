@@ -2,20 +2,28 @@
 
 pragma solidity 0.6.9;
 
-import "./PriceAware.sol";
+import { PriceAware } from "./PriceAware.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
-import "./PriceFeedL2.sol";
+import { PriceFeedL2 } from "./PriceFeedL2.sol";
+import { XadeOwnableUpgrade } from "./utils/XadeOwnableUpgrade.sol";
 
-contract RedstonePriceFeed is PriceAware, BlockContext, PriceFeedL2 {
+contract RedstonePriceFeed is PriceAware, BlockContext, XadeOwnableUpgrade, PriceFeedL2 {
+    //address of provider
+    address public signer;
+
     function isSignerAuthorized(address _signer) public view virtual override returns (bool) {
-        return _signer == 0x0C39486f770B26F5527BBBf942726537986Cd7eb;
-        //redstone main provider
+        return _signer == signer;
     }
 
     function updatePrice(bytes32 _priceFeedKey) external {
         requireKeyExisted(_priceFeedKey, true);
 
         uint256 price = getPriceFromMsg(_priceFeedKey);
-        this.setLatestData(_priceFeedKey, price, _blockTimestamp());
+        setLatestData(_priceFeedKey, price, _blockTimestamp());
+    }
+
+    function setSigner(address _signer) external onlyOwner {
+        require(_signer != address(0));
+        signer = _signer;
     }
 }
