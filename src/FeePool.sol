@@ -65,7 +65,7 @@ contract FeePool is
     }
 
     function notifyTokenAmount(IERC20 _token, Decimal.decimal calldata _amount) external override {
-        //require(_amount != Decimal.zero(), "invalid amount");
+        require(_amount.toUint() != 0, "invalid amount");
         if (!feeTokenMap[address(_token)]) {
             addFeeToken(_token);
         }

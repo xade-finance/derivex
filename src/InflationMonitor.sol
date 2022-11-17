@@ -22,6 +22,10 @@ contract InflationMonitor is IInflationMonitor, XadeOwnableUpgrade, BlockContext
         Decimal.decimal cumulativeAmount;
     }
 
+    //**********************************************************//
+    //    Can not change the order of below state variables     //
+    //**********************************************************//
+
     uint256 public constant THRESHOLD_PERIOD = 2 weeks;
 
     // An array of withdrawal timestamps and cumulative amount
@@ -36,6 +40,14 @@ contract InflationMonitor is IInflationMonitor, XadeOwnableUpgrade, BlockContext
     IMultiTokenRewardRecipient private feePool;
 
     uint256[50] private __gap;
+
+    //**********************************************************//
+    //    Can not change the order of above state variables     //
+    //**********************************************************//
+
+    //◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤ add state variables below ◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤//
+
+    //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
 
     function initialize(IMultiTokenRewardRecipient _feePool) public initializer {
         __Ownable_init();
