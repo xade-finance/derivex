@@ -210,15 +210,17 @@ contract ClearingHouse is
 
     PositionId[] positionIds;
 
+    Decimal.decimal public partialLiquidationRatio;
+
+    mapping(address => bool) public backstopLiquidityProviderMap;
+
     uint256[50] private __gap;
+
     //**********************************************************//
     //    Can not change the order of above state variables     //
     //**********************************************************//
 
     //◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤ add state variables below ◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤//
-    Decimal.decimal public partialLiquidationRatio;
-
-    mapping(address => bool) public backstopLiquidityProviderMap;
 
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
     //
@@ -232,9 +234,14 @@ contract ClearingHouse is
         uint256 _maintenanceMarginRatio,
         uint256 _liquidationFeeRatio,
         IInsuranceFund _insuranceFund,
-        address _trustedForwarder
-    ) public initializer {
+        IMultiTokenRewardRecipient _tollPool
+    )
+        public
+        //address _trustedForwarder
+        initializer
+    {
         require(address(_insuranceFund) != address(0), "Invalid IInsuranceFund");
+        require(address(_tollPool) != address(0), "Invalid TollPool");
 
         __OwnerPausable_init();
         __ReentrancyGuard_init();
@@ -244,7 +251,8 @@ contract ClearingHouse is
         maintenanceMarginRatio = Decimal.decimal(_maintenanceMarginRatio);
         liquidationFeeRatio = Decimal.decimal(_liquidationFeeRatio);
         insuranceFund = _insuranceFund;
-        trustedForwarder = _trustedForwarder;
+        feePool = _tollPool;
+        //trustedForwarder = _trustedForwarder;
     }
 
     //
@@ -442,29 +450,6 @@ contract ClearingHouse is
     //   move the remain margin to insuranceFund
 
     /**
-     * @notice open a position with referral code
-     * @param _amm amm address
-     * @param _side enum Side; BUY for long and SELL for short
-     * @param _quoteAssetAmount quote asset amount in 18 digits. Can Not be 0
-     * @param _leverage leverage  in 18 digits. Can Not be 0
-     * @param _baseAssetAmountLimit minimum base asset amount expected to get to prevent from slippage.
-     * @param _referralCode referral code
-     */
-    function openPositionWithReferral(
-        IAmm _amm,
-        Side _side,
-        Decimal.decimal calldata _quoteAssetAmount,
-        Decimal.decimal calldata _leverage,
-        Decimal.decimal calldata _baseAssetAmountLimit,
-        bytes32 _referralCode
-    ) external {
-        openPosition(_amm, _side, _quoteAssetAmount, _leverage, _baseAssetAmountLimit);
-        // if (_referralCode != 0) {
-        //     emit ReferredPositionChanged(_referralCode);
-        // }
-    }
-
-    /**
      * @notice open a position
      * @param _amm amm address
      * @param _side enum Side; BUY for long and SELL for short
@@ -538,7 +523,7 @@ contract ClearingHouse is
         Decimal.decimal memory transferredFee = transferFee(trader, _amm, positionResp.exchangedQuoteAssetAmount);
 
         // emit event
-        uint256 spotPrice = _amm.getSpotPrice().toUint();
+        uint256 spotPrice = getSpotPrice(_amm);
         int256 fundingPayment = positionResp.fundingPayment.toInt(); // pre-fetch for stack too deep error
         emit PositionChanged(
             trader,
@@ -555,22 +540,6 @@ contract ClearingHouse is
             spotPrice,
             fundingPayment
         );
-    }
-
-    /**
-     * @notice close position with referral code
-     * @param _amm IAmm address
-     * @param _referralCode referral code
-     */
-    function closePositionWithReferral(
-        IAmm _amm,
-        Decimal.decimal calldata _quoteAssetAmountLimit,
-        bytes32 _referralCode
-    ) external {
-        closePosition(_amm, _quoteAssetAmountLimit);
-        // if (_referralCode != 0) {
-        //     emit ReferredPositionChanged(_referralCode);
-        // }
     }
 
     /**
@@ -630,7 +599,7 @@ contract ClearingHouse is
         Decimal.decimal memory transferredFee = transferFee(trader, _amm, positionResp.exchangedQuoteAssetAmount);
 
         // prepare event
-        uint256 spotPrice = _amm.getSpotPrice().toUint();
+        uint256 spotPrice = getSpotPrice(_amm);
         int256 fundingPayment = positionResp.fundingPayment.toInt();
         emit PositionChanged(
             trader,
@@ -996,7 +965,7 @@ contract ClearingHouse is
         }
 
         // emit event
-        uint256 spotPrice = _amm.getSpotPrice().toUint();
+        uint256 spotPrice = getSpotPrice(_amm);
         int256 fundingPayment = positionResp.fundingPayment.toInt();
         emit PositionChanged(
             _trader,
@@ -1458,6 +1427,11 @@ contract ClearingHouse is
             (spotPricePnl.toInt() > twapPricePnl.toInt())
             ? (spotPricePnl, spotPositionNotional)
             : (twapPricePnl, twapPositionNotional);
+    }
+
+    function getSpotPrice(IAmm _amm) public view returns (uint256 spotPrice) {
+        requireAmm(_amm, true);
+        spotPrice = _amm.getSpotPrice().toUint();
     }
 
     function getUnadjustedPosition(IAmm _amm, address _trader) public view returns (Position memory position) {
