@@ -7,7 +7,7 @@ import { BlockContext } from "./utils/BlockContext.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 
-contract PriceFeedL2 is IPriceFeed, BlockContext, Initializable, XadeOwnableUpgrade {
+contract PriceFeedL2 is IPriceFeed, BlockContext, XadeOwnableUpgrade {
     using SafeMath for uint256;
 
     event PriceFeedDataSet(bytes32 key, uint256 price, uint256 timestamp);
@@ -74,7 +74,7 @@ contract PriceFeedL2 is IPriceFeed, BlockContext, Initializable, XadeOwnableUpgr
         bytes32 _priceFeedKey,
         uint256 _price,
         uint256 _timestamp
-    ) external override {
+    ) internal {
         PriceData memory data = PriceData({ price: _price, timestamp: _timestamp });
         priceFeedMap[_priceFeedKey].priceData.push(data);
 

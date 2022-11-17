@@ -16,10 +16,4 @@ interface IPriceFeed {
 
     // get twap price depending on _period
     function getTwapPrice(bytes32 _priceFeedKey, uint256 _interval) external view returns (uint256);
-
-    function setLatestData(
-        bytes32 _priceFeedKey,
-        uint256 _price,
-        uint256 _timestamp
-    ) external;
 }
